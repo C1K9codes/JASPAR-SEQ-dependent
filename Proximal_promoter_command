@@ -1,0 +1,48 @@
+# load the necessary librariers
+library(TFBSTools)
+library(Biostrings)
+library(JASPAR2022)
+library(dplyr)
+library(writexl) 
+library(knitr)
+library(kableExtra)
+
+# store sequence using Biostring
+ABCB1_proximal <- DNAString("TCACAGGTAAAGAGTAATGATAGCCTTTAAAATGGTAATACAAGTGTTTA
+TCCCAGTACCAGAGGAGGAGCTACATGAACTAAGGCAGGCAGGCTTGAAA
+GCACTAATCAGTGAAAACCCAAGGATAAGTTTGGGTGGAGGAAGGGTGGG
+AGTAGAGATAAAATAAATTTTGAGTACATGACTATGGCTCCAAAGCATTG
+AAGAAATATGTGTGATCTTTTTGCTAAGGTGTAGGACGTCTTAATGAGCA
+GTTGAAAAAACAAACAAAAACCTCGAAGAGTTACATGGCTTAGGGATTGG
+GGTATAATTGAAAAATAGCCAGAGTTGAGAAGTTTAGCCAGAATAGGCAG
+AATGAAGATTAGAATCTAAGCTAAAAAAAAAAAAAAAAAAGAGAGAGACT
+TCTTTTGGTAGGTTACTGGGAAGACCTTCAAATGAGAAGTGAAGTAAAAA
+TTGAATTAATTTGTTCAAATTTTTAATTTCTCTTTATCCACTGGCTAAAA
+AATAATTAGTAAATTTCAATTTAAAATACCATATGATATTTCAAACAAAA
+TTGAAAATGTAACAAGAATTTGAAGTAATAAGTATGGAAAATATAAAGAT
+A")
+
+# Get human motifs
+opts <- list(species = 9606) 
+motifs <- getMatrixSet(JASPAR2022, opts)
+
+# Convert motifs to PWMs using log2 probability ratios
+pwm <- toPWM(motifs, type = "log2probratio")
+
+# Scan sequence for all motifs
+hits <- searchSeq( pwm, ABCB1_proximal, seqname = "ABCB1_proximal", min.score = "95%", # high threshold strand = "*" # both strands)
+
+# Keep only motifs with at least one hit
+hits_filtered <- hits[sapply(hits, length) > 0]
+
+# Convert to data.frame and add TF names
+hits_df <- do.call(rbind, lapply(hits_filtered, as.data.frame)) hits_df$TF <- rep(names(hits_filtered), sapply(hits_filtered, length))
+
+# Keep only desired columns
+hits_df_small <- hits_df %>% select(class, start, end, siteSeqs, absScore, relScore)
+
+# Display top hits
+kable(head(hits_df_small, 10), booktabs = TRUE, longtable = TRUE) %>% kable_styling(latex_options = c("striped", "scale_down"))
+
+# Show filtered hits
+kable(head(hits_df_filtered_small, 10), booktabs = TRUE, longtable = TRUE) %>% kable_styling(latex_options = c("striped", "scale_down"))
